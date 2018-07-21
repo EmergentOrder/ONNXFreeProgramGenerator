@@ -7,7 +7,7 @@ settings(
     crossScalaVersions := Seq("2.11.12","2.12.4", "2.13.0-M3"),
     version      := "0.1.0-SNAPSHOT"
   )),
-  name := "onnx-freestyle-algebra-generator",
+  name := "onnx-freestyle-program-generator",
   resolvers += Resolver.mavenLocal,
   resolvers += Resolver.jcenterRepo,
 addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.full),
