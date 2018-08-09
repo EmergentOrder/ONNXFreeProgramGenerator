@@ -60,9 +60,9 @@ object ONNXProgramGenerator extends App {
     //Body of program generated here
     "    for {\n" +
     //Assume one output for now
-    //TODO: fix Bad node hardcode here
-//                 "      nodeInput3 <- dataSource.inputData\n" +
-    "      node1 <- dataSource.inputData\n" +
+    "      node" +
+    nodeInputs(0)(0) +
+    " <- dataSource.inputData\n" +
     params
       .map(x =>
         "      node" + x._1 + " <- "

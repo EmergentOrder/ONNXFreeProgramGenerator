@@ -31,7 +31,7 @@ object ParamsMap {
 //TODO: Inject model
   org.bytedeco.javacpp.Loader.load(classOf[org.bytedeco.javacpp.onnx])
 
-  val byteArray = Files.readAllBytes(Paths.get("super_resolution.onnx"))
+  val byteArray = Files.readAllBytes(Paths.get("single_relu.onnx"))
 
   val res = ModelProto.parseFrom(byteArray)
 
