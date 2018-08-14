@@ -89,19 +89,19 @@ object ParamsMap {
     val dimsList = (0 until dimsCount.toInt).map(x => tensorProto.dims(x)).toList
 
     val bytesBuffer = tensorProto.raw_data.asByteBuffer
-    val byteArray = new Array[Byte](bytesBuffer.capacity)
-    val bytes = ByteBuffer.wrap(byteArray)
+//    val byteArray = new Array[Byte](bytesBuffer.capacity)
+//    val bytes = ByteBuffer.wrap(byteArray)
 
     //FIXME : MOAR TYPES?
     val array = onnxDataType match {
       case TensorProto.INT32 => {
         val arrX = dimsToArray[Int](dimsCount, dimsList)
-        bytes.asIntBuffer.get(arrX)
+        bytesBuffer.asIntBuffer.get(arrX)
         arrX.map(x => x.asInstanceOf[VV])
       }
       case TensorProto.FLOAT => {
         val arrX = dimsToArray[Float](dimsCount, dimsList)
-        bytes.asFloatBuffer.get(arrX)
+        bytesBuffer.asFloatBuffer.get(arrX)
         arrX.map(y => if(y.isNaN) 0.0f else y).map(x => x.asInstanceOf[VV])
       }
     }
@@ -127,12 +127,12 @@ object ParamsMap {
 
   def nodeInputs[VV:spire.math.Numeric:ClassTag] = node.map{x => 
                                                               val inputCount = x.input_size.toInt
-                                                              val input = (0 until inputCount).map(y => graph.input(y)).toList
+                                                              val input = (0 until inputCount).map(y => x.input(y)).toList
 
                                                             input
                                                             }.toArray.map { x =>
     x.toArray
-      .map(y => y.name.getString.asInstanceOf[String].replaceAll("/", "_"))
+      .map(y => y.getString.asInstanceOf[String].replaceAll("/", "_"))
       .filter(x =>
         nodeNames[VV].contains("input_" + x) || nodeNames[VV]
           .contains("param_" + x) || nodeNames[VV].contains("output_" + x))
@@ -154,7 +154,6 @@ object ParamsMap {
 
   def outputs[VV:spire.math.Numeric:ClassTag] = {
     val outputArray = globalOutput.toArray
-//    outputArray.foreach(x => println(x.name.getString))
     outputArray.filter(x => nodeNames[VV].contains("output_" + x.name.getString))
   }
 
@@ -181,7 +180,7 @@ object ParamsMap {
     initializer.map { x =>
       val dimsCount = x.dims_size
       val dimsList = (0 until dimsCount.toInt).map(y => x.dims(y)).toList
-
+ 
 //      val dimsList = x.dims.toList
       val arrX: Array[VV] = onnxTensorProtoToArray[VV](x)
       x.name.getString.replaceAll("/", "_") -> (arrX, dimsList)
