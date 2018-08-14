@@ -21,7 +21,7 @@ package org.emergentorder.onnx
 import java.nio.file._
 import java.nio.ByteBuffer
 import scala.meta._
-import onnx.onnx.TensorProto
+import org.bytedeco.javacpp.onnx.TensorProto
 import collection.JavaConverters._
 import spire.math.Number
 
@@ -31,19 +31,19 @@ object ONNXProgramGenerator extends App {
 
   val path = Paths.get("src/main/scala/ONNXProgram.scala");
 
-  val params = ParamsMap.params
-  val nodes = ParamsMap.nodes
-  val nodeInputs = ParamsMap.nodeInputs
-  val nodeOutputs = ParamsMap.nodeOutputs
-  val outputs = ParamsMap.outputs
-  val attributes = ParamsMap.attributes
-//val sortedParamNames = params.keys.toSeq.sorted.map(x => "param_" + x)
-  val ops = ParamsMap.ops
-  val distinctOps = ops.distinct
-
-  val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
-
   def fullSource[VV:spire.math.Numeric: ClassTag] = {
+    val params = ParamsMap.params[VV]
+    val nodes = ParamsMap.nodes[VV]
+    val nodeInputs = ParamsMap.nodeInputs[VV]
+    val nodeOutputs = ParamsMap.nodeOutputs
+    val outputs = ParamsMap.outputs[VV]
+    val attributes = ParamsMap.attributes
+  //val sortedParamNames = params.keys.toSeq.sorted.map(x => "param_" + x)
+    val ops = ParamsMap.ops
+    val distinctOps = ops.distinct
+
+    val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
+
     "package org.emergentorder.onnx\n\n" +
     "import freestyle.free._\n" +
     "import cats.free.{ Free, FreeApplicative } \n" +
@@ -79,46 +79,59 @@ object ONNXProgramGenerator extends App {
 //        x._2.map(y => y.getAllFields.toArray).foreach(y => println(y(1)._2.getClass))
 
 //        println(x._2.size)
-        val longListFields = x._2
+/*
+    val longListFields = x._2
           .filter { y =>
-            val fields = y.getAllFields.toArray
-            fields(1)._2.isInstanceOf[Vector[Long]]
+            val longListCount = y.ints_size
+            val longListList = (0 until longListCount.toInt).map(z => y.ints(z)).toList
+
+    //        val fields = y.getAllFields.toArray
+            longListList(1)._2.isInstanceOf[Vector[Long]]
           }
           .map { y =>
             val fields = y.getAllFields.toArray
             val field = fields(1)._2.asInstanceOf[Vector[Long]]
             y.name + """ = Some((Array("""" + field.mkString("""","""") + """")))"""
           }
-        val longFields = x._2
+*/
+          val longFields = x._2
           .filter { y =>
-            val fields = y.getAllFields.toArray
-            fields(1)._2.isInstanceOf[Long]
+            val longCount = y.ints_size
+            val longList = (0 until longCount.toInt).map(z => y.ints(z)).toList
+            !longList.isEmpty  //|| longList(0).isInstanceOf[Long]
           }
           .map { y =>
-            val fields = y.getAllFields.toArray
-            val field = fields(1)._2.asInstanceOf[Long]
-            y.name + """ = Some(("""" + field.toInt + """"))""" 
+            val longCount = y.ints_size
+            val longList = (0 until longCount.toInt).map(z => y.ints(z)).toList
+            //Why 1?
+            val field = longList(1).asInstanceOf[Long]
+            y.name.getString + """ = Some(Array("""" + field.toInt + """"))""" 
           }
         val stringFields = x._2
           .filter { y =>
-            val fields = y.getAllFields.toArray
-            fields(1)._2.isInstanceOf[String]
+            val stringCount = y.strings_size
+            val stringList = (0 until stringCount.toInt).map(z => y.strings(z)).toList
+            !stringList.isEmpty //stringList(1).isInstanceOf[String]
           }
           .map { y =>
-            val fields = y.getAllFields.toArray
-            val field = fields(1)._2.asInstanceOf[String]
-            y.name + """ = Some(("""" + field + """"))"""
+            val stringCount = y.strings_size
+            val stringList = (0 until stringCount.toInt).map(z => y.strings(z)).toList
+            val field = stringList(1).asInstanceOf[String]
+            y.name.getString + """ = Some(Array("""" + field + """"))"""
           }
         val tensorProtoFields = x._2
           .filter { y =>
-            val fields = y.getAllFields.toArray
-            fields(1)._2.isInstanceOf[TensorProto]
+            val tensorCount = y.tensors_size
+            val tensorList = (0 until tensorCount.toInt).map(z => y.tensors(z)).toList
+            //fields(1)._2.isInstanceOf[TensorProto]
+            !tensorList.isEmpty //tensorList(1).isInstanceOf[TensorProto]
           }
           .map { y =>
-            val fields = y.getAllFields.toArray
+            val tensorCount = y.tensors_size
+            val tensorList = (0 until tensorCount.toInt).map(z => y.tensors(z)).toList
             val field = ParamsMap.onnxTensorProtoToArray[VV](
-              fields(1)._2.asInstanceOf[TensorProto])
-            y.name + " = Some((Array(" + field.mkString(",") + ")))"
+              tensorList(1).asInstanceOf[TensorProto])
+            y.name.getString + " = Some((Array(" + field.mkString(",") + ")))"
           }
        
         val opName = x._1._1._2
@@ -129,8 +142,8 @@ object ONNXProgramGenerator extends App {
           nodesOrParams.mkString(",") +
           (if (tensorProtoFields.size > 0) "," else "") +
           tensorProtoFields.mkString(",") +
-          (if (longListFields.size > 0) "," else "") +
-          longListFields.mkString(",") +
+//          (if (longListFields.size > 0) "," else "") +
+//          longListFields.mkString(",") +
           (if (stringFields.size > 0) "," else "") +
           stringFields.mkString(",") +
           (if (longFields.size > 0) "," else "") +
@@ -139,7 +152,7 @@ object ONNXProgramGenerator extends App {
       }
       .mkString("") +
     "    } yield (" +
-    outputs.map(x => "node" + x.name).mkString(",") +
+    outputs.map(x => "node" + x.name.getString).mkString(",") +
     ")\n" +
     "}\n"
   }
