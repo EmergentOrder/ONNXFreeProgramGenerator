@@ -23,8 +23,12 @@ import java.nio.ByteBuffer
 import onnx.onnx.ModelProto
 import onnx.onnx.TensorProto
 import collection.JavaConverters._
-import spire.math.Number
+//import spire.math.Number
 import scala.reflect.ClassTag
+
+//TODO: Use javacpp onnx for model loading over generated pb onnx
+//import org.bytedeco.javacpp._
+//import org.bytedeco.javacpp.onnx._
 
 object ParamsMap {
 
@@ -33,24 +37,32 @@ object ParamsMap {
 
   val byteArray = Files.readAllBytes(Paths.get("single_relu.onnx"))
 
+//        val res = new ModelProto()
+//        ParseProtoFromBytes(res, new BytePointer(byteArray:_*), byteArray.length) 
+
   val res = ModelProto.parseFrom(byteArray)
 
   val graph = res.getGraph
 
-  def dimsToArray[T: ClassTag](dimsCount: Int,
-                               dimsList: List[Long]): Array[T] = {
+
+  val maxOpsetVersion = res.opsetImport
+  //println("max opset : " + maxOpsetVersion)
+  //val maxOpsetVersion = res.opset_import(0).version
+
+  def dimsToArray[VV:spire.math.Numeric: ClassTag](dimsCount: Int,
+                               dimsList: List[Long]): Array[VV] = {
     val dimsArrayInt = dimsList.map(x => x.toInt).toArray
     val arrX = dimsCount match {
-      case 1 => Array.ofDim[T](dimsArrayInt(0))
-      case 2 => Array.ofDim[T](dimsArrayInt(0), dimsArrayInt(1)).flatten
+      case 1 => Array.ofDim[VV](dimsArrayInt(0))
+      case 2 => Array.ofDim[VV](dimsArrayInt(0), dimsArrayInt(1)).flatten
       case 3 =>
         Array
-          .ofDim[T](dimsArrayInt(0), dimsArrayInt(1), dimsArrayInt(2))
+          .ofDim[VV](dimsArrayInt(0), dimsArrayInt(1), dimsArrayInt(2))
           .flatten
           .flatten
       case 4 =>
         Array
-          .ofDim[T](dimsArrayInt(0),
+          .ofDim[VV](dimsArrayInt(0),
                     dimsArrayInt(1),
                     dimsArrayInt(2),
                     dimsArrayInt(3))
@@ -59,7 +71,7 @@ object ParamsMap {
           .flatten
       case 5 =>
         Array
-          .ofDim[T](dimsArrayInt(0),
+          .ofDim[VV](dimsArrayInt(0),
                     dimsArrayInt(1),
                     dimsArrayInt(2),
                     dimsArrayInt(3),
@@ -72,7 +84,7 @@ object ParamsMap {
     arrX
   }
 
-  def onnxTensorProtoToArray(tensorProto: TensorProto): Array[Number] = {
+  def onnxTensorProtoToArray[VV:spire.math.Numeric:ClassTag](tensorProto: TensorProto): Array[VV] = {
     val onnxDataType = tensorProto.dataType.toString
     val dimsCount = tensorProto.dims.size
     val dimsList = tensorProto.dims.toList
@@ -84,15 +96,15 @@ object ParamsMap {
       case "INT" => {
         val arrX = dimsToArray[Int](dimsCount, dimsList)
         bytes.asIntBuffer.get(arrX)
-        arrX.map(x => Number(x))
+        arrX.map(x => x.asInstanceOf[VV])
       }
       case "FLOAT" => {
         val arrX = dimsToArray[Float](dimsCount, dimsList)
         bytes.asFloatBuffer.get(arrX)
-        arrX.map(x => if (x.isNaN) Number(0f) else Number(x))
+        arrX.map(x => x.asInstanceOf[VV])
       }
     }
-    array
+    array.toArray
   }
 
   def attributes = graph.node.map(x => x.attribute.toArray).toArray
@@ -127,7 +139,7 @@ object ParamsMap {
   def params =
     graph.initializer.map { x =>
       val dimsList = x.dims.toList
-      val arrX: Array[Number] = onnxTensorProtoToArray(x)
+      val arrX: Array[Float] = onnxTensorProtoToArray(x)
       x.name.replaceAll("/", "_") -> (arrX, dimsList)
     }.toMap
 

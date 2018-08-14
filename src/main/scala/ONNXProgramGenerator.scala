@@ -25,6 +25,8 @@ import onnx.onnx.TensorProto
 import collection.JavaConverters._
 import spire.math.Number
 
+import scala.reflect.ClassTag
+
 object ONNXProgramGenerator extends App {
 
   val path = Paths.get("src/main/scala/ONNXProgram.scala");
@@ -41,11 +43,13 @@ object ONNXProgramGenerator extends App {
 
   val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
 
-  val fullSource = "package org.emergentorder.onnx\n\n" +
+  def fullSource[VV:spire.math.Numeric: ClassTag] = {
+    "package org.emergentorder.onnx\n\n" +
     "import freestyle.free._\n" +
     "import cats.free.{ Free, FreeApplicative } \n" +
 //               "import example.Float16\n"
     "import freestyle.free.implicits._\n" +
+    "import scala.reflect.ClassTag\n" +
     "import scala.language.higherKinds\n\n" +
     "@module trait Application {\n" +
     distinctOps
@@ -56,30 +60,34 @@ object ONNXProgramGenerator extends App {
     "  val dataSource: DataSource\n" +
     "  import cats.implicits._\n" +
     //Omit return type here for now
-    "  def program = \n" +
+    "  def program[VV:spire.math.Numeric:ClassTag] = \n" +
     //Body of program generated here
     "    for {\n" +
     //Assume one output for now
     "      node" +
     nodeInputs(0)(0) +
-    " <- dataSource.inputData\n" +
+    " <- dataSource.inputData[VV]\n" +
     params
       .map(x =>
         "      node" + x._1 + " <- "
-          + "dataSource.getParams(\"" + x._1 + "\")\n")
+          + "dataSource.getParams[VV](\"" + x._1 + "\")\n")
       .mkString("") +
     (nodesInputsOpsAndOutputs zip attributes)
       .map { x =>
-        val nodesOrParams = x._1._1._1.map(y => "node" + y)
+        val nodesOrParams = x._1._1._1.map(y => "node" + y + """, """" + y + """"""")
+
+//        x._2.map(y => y.getAllFields.toArray).foreach(y => println(y(1)._2.getClass))
+
+//        println(x._2.size)
         val longListFields = x._2
           .filter { y =>
             val fields = y.getAllFields.toArray
-            fields(1)._2.isInstanceOf[java.util.List[Long]]
+            fields(1)._2.isInstanceOf[Vector[Long]]
           }
           .map { y =>
             val fields = y.getAllFields.toArray
-            val field = fields(1)._2.asInstanceOf[java.util.List[Long]]
-            y.name + " = Some((Array(" + field.asScala.mkString(",") + ")))"
+            val field = fields(1)._2.asInstanceOf[Vector[Long]]
+            y.name + """ = Some((Array("""" + field.mkString("""","""") + """")))"""
           }
         val longFields = x._2
           .filter { y =>
@@ -89,7 +97,7 @@ object ONNXProgramGenerator extends App {
           .map { y =>
             val fields = y.getAllFields.toArray
             val field = fields(1)._2.asInstanceOf[Long]
-            y.name + " = Some((" + field.toInt + "))"
+            y.name + """ = Some(("""" + field.toInt + """"))""" 
           }
         val stringFields = x._2
           .filter { y =>
@@ -108,12 +116,16 @@ object ONNXProgramGenerator extends App {
           }
           .map { y =>
             val fields = y.getAllFields.toArray
-            val field = ParamsMap.onnxTensorProtoToArray(
+            val field = ParamsMap.onnxTensorProtoToArray[VV](
               fields(1)._2.asInstanceOf[TensorProto])
             y.name + " = Some((Array(" + field.mkString(",") + ")))"
           }
-
-        "      node" + x._1._2(0) + " <- " + x._1._1._2 + "." + x._1._1._2 + "(" +
+       
+        val opName = x._1._1._2
+        val nodeName = x._1._2(0) 
+        "      node" + nodeName + " <- " + opName + "." + opName + "1" + "[VV]" +
+        "(" +
+        """"""" + nodeName + """", """ + //assumes > 0 args
           nodesOrParams.mkString(",") +
           (if (tensorProtoFields.size > 0) "," else "") +
           tensorProtoFields.mkString(",") +
@@ -130,10 +142,13 @@ object ONNXProgramGenerator extends App {
     outputs.map(x => "node" + x.name).mkString(",") +
     ")\n" +
     "}\n"
+  }
 //pw.write("for {\n")
 
   def generate() = {
-    val onnxSource = fullSource.parse[Source].get
+//    println(fullSource[Float])
+    //Seems to not catch some things it should
+    val onnxSource = fullSource[Float].parse[Source].get
 
     Files.write(path, onnxSource.syntax.getBytes("UTF-8"));
   }
