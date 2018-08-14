@@ -104,8 +104,8 @@ object ONNXProgramGenerator extends App {
             val longCount = y.ints_size
             val longList = (0 until longCount.toInt).map(z => y.ints(z)).toList
             //Why 1?
-            val field = longList(1).asInstanceOf[Long]
-            y.name.getString + """ = Some(Array("""" + field.toInt + """"))""" 
+            val field = longList.toVector.asInstanceOf[Vector[Long]]
+            y.name.getString + """ = Some((Array("""" + field.mkString("""","""") + """")))""" 
           }
         val stringFields = x._2
           .filter { y =>
@@ -116,7 +116,7 @@ object ONNXProgramGenerator extends App {
           .map { y =>
             val stringCount = y.strings_size
             val stringList = (0 until stringCount.toInt).map(z => y.strings(z)).toList
-            val field = stringList(1).asInstanceOf[String]
+            val field = stringList.asInstanceOf[String]
             y.name.getString + """ = Some(Array("""" + field + """"))"""
           }
         val tensorProtoFields = x._2
@@ -130,7 +130,7 @@ object ONNXProgramGenerator extends App {
             val tensorCount = y.tensors_size
             val tensorList = (0 until tensorCount.toInt).map(z => y.tensors(z)).toList
             val field = ParamsMap.onnxTensorProtoToArray[VV](
-              tensorList(1).asInstanceOf[TensorProto])
+              tensorList.asInstanceOf[TensorProto])
             y.name.getString + " = Some((Array(" + field.mkString(",") + ")))"
           }
        
