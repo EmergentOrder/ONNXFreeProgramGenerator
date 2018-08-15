@@ -79,32 +79,26 @@ object ONNXProgramGenerator extends App {
 //        x._2.map(y => y.getAllFields.toArray).foreach(y => println(y(1)._2.getClass))
 
 //        println(x._2.size)
-/*
-    val longListFields = x._2
+
+          val longFields = x._2
+          .filter { y => y.has_i
+          }
+          .map { y =>
+
+            val field = y.i.asInstanceOf[Long]
+            y.name.getString + """ = Some(("""" + field.toInt + """"))"""
+          }
+
+          val longListFields = x._2
           .filter { y =>
             val longListCount = y.ints_size
             val longListList = (0 until longListCount.toInt).map(z => y.ints(z)).toList
-
-    //        val fields = y.getAllFields.toArray
-            longListList(1)._2.isInstanceOf[Vector[Long]]
+            !longListList.isEmpty  //|| longList(0).isInstanceOf[Long]
           }
           .map { y =>
-            val fields = y.getAllFields.toArray
-            val field = fields(1)._2.asInstanceOf[Vector[Long]]
-            y.name + """ = Some((Array("""" + field.mkString("""","""") + """")))"""
-          }
-*/
-          val longFields = x._2
-          .filter { y =>
-            val longCount = y.ints_size
-            val longList = (0 until longCount.toInt).map(z => y.ints(z)).toList
-            !longList.isEmpty  //|| longList(0).isInstanceOf[Long]
-          }
-          .map { y =>
-            val longCount = y.ints_size
-            val longList = (0 until longCount.toInt).map(z => y.ints(z)).toList
-            //Why 1?
-            val field = longList.toVector.asInstanceOf[Vector[Long]]
+            val longListCount = y.ints_size
+            val longListList = (0 until longListCount.toInt).map(z => y.ints(z)).toList
+            val field = longListList.toVector.asInstanceOf[Vector[Long]]
             y.name.getString + """ = Some((Array("""" + field.mkString("""","""") + """")))""" 
           }
         val stringFields = x._2
@@ -142,8 +136,8 @@ object ONNXProgramGenerator extends App {
           nodesOrParams.mkString(",") +
           (if (tensorProtoFields.size > 0) "," else "") +
           tensorProtoFields.mkString(",") +
-//          (if (longListFields.size > 0) "," else "") +
-//          longListFields.mkString(",") +
+         (if (longListFields.size > 0) "," else "") +
+          longListFields.mkString(",") +
           (if (stringFields.size > 0) "," else "") +
           stringFields.mkString(",") +
           (if (longFields.size > 0) "," else "") +
