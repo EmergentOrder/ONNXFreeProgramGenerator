@@ -20,6 +20,7 @@ addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.
 //"com.thesamet.scalapb" %  "scalapb-runtime_2.12" % "0.7.5-SNAPSHOT",
 //"com.thesamet.scalapb" %% "compilerplugin" % "0.7.5-SNAPSHOT",
       "org.bytedeco" % "javacpp" % "1.4.3-SNAPSHOT",
+//"com.chuusai" %% "shapeless" % "2.3.3",
       "org.bytedeco.javacpp-presets" % "onnx-platform" % "1.2.2-1.4.3-SNAPSHOT",
       "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test,
       "org.typelevel" %% "spire" % "0.16.0",
@@ -28,8 +29,9 @@ addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.
       "com.typesafe.scala-logging" %% "scala-logging" % "3.9.0",
       "ch.qos.logback" % "logback-classic" % "1.2.3",
       "com.github.pureconfig" %% "pureconfig" % "0.9.1",
-      "io.frees" % "frees-core_2.12" % "0.8.2"
-       ),
+      "io.frees" % "frees-core_2.12" % "0.8.2",
+      "org.emergentorder.onnx" %% "onnx-scala-freestyle" % "1.2.2-0.1.0-SNAPSHOT"       
+    ),
 //    scalafixSettings,
 //    wartremoverErrors ++= Warts.allBut(Wart.PublicInference),
 //    wartremoverExcluded += baseDirectory.value / "src" / "main" / "scala" / "ONNXProgram.scala",

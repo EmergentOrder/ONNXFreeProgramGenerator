@@ -31,15 +31,18 @@ object ONNXProgramGenerator extends App {
 
   val path = Paths.get("src/main/scala/ONNXProgram.scala");
 
+  val fileName = args(0)
+  val paramsMap = new ParamsMap(fileName)
+
   def fullSource[VV:spire.math.Numeric: ClassTag] = {
-    val params = ParamsMap.params[VV]
-    val nodes = ParamsMap.nodes[VV]
-    val nodeInputs = ParamsMap.nodeInputs[VV]
-    val nodeOutputs = ParamsMap.nodeOutputs
-    val outputs = ParamsMap.outputs[VV]
-    val attributes = ParamsMap.attributes
+    val params = paramsMap.params[VV]
+    val nodes = paramsMap.nodes[VV]
+    val nodeInputs = paramsMap.nodeInputs[VV]
+    val nodeOutputs = paramsMap.nodeOutputs
+    val outputs = paramsMap.outputs[VV]
+    val attributes = paramsMap.attributes
   //val sortedParamNames = params.keys.toSeq.sorted.map(x => "param_" + x)
-    val ops = ParamsMap.ops
+    val ops = paramsMap.ops
     val distinctOps = ops.distinct
 
     val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
@@ -54,10 +57,10 @@ object ONNXProgramGenerator extends App {
     "@module trait Application {\n" +
     distinctOps
       .map { x =>
-        "  val " + x + ": " + x.capitalize + "\n"
+        "  val " + x + "FS" + ": " + x.capitalize + "FS" + "\n"
       }
       .mkString("") +
-    "  val dataSource: DataSource\n" +
+    "  val dataSource: DataSourceFS\n" +
     "  import cats.implicits._\n" +
     //Omit return type here for now
     "  def program[VV:spire.math.Numeric:ClassTag] = \n" +
@@ -123,14 +126,14 @@ object ONNXProgramGenerator extends App {
           .map { y =>
             val tensorCount = y.tensors_size
             val tensorList = (0 until tensorCount.toInt).map(z => y.tensors(z)).toList
-            val field = ParamsMap.onnxTensorProtoToArray[VV](
+            val field = paramsMap.onnxTensorProtoToArray[VV](
               tensorList.asInstanceOf[TensorProto])
             y.name.getString + " = Some((Array(" + field.mkString(",") + ")))"
           }
        
         val opName = x._1._1._2
         val nodeName = x._1._2(0) 
-        "      node" + nodeName + " <- " + opName + "." + opName + "1" + "[VV]" +
+        "      node" + nodeName + " <- " + opName + "FS" + "." + opName + "1" + "[VV]" +
         "(" +
         """"""" + nodeName + """", """ + //assumes > 0 args
           nodesOrParams.mkString(",") +

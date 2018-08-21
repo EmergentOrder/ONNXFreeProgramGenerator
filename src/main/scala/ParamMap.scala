@@ -20,31 +20,24 @@ package org.emergentorder.onnx
 
 import java.nio.file._
 import java.nio.ByteBuffer
-//import onnx.onnx.ModelProto
-//import onnx.onnx.TensorProto
 import collection.JavaConverters._
-//import spire.math.Number
 import scala.reflect.ClassTag
 
 import org.bytedeco.javacpp._
 import org.bytedeco.javacpp.onnx._
 
-object ParamsMap {
+class ParamsMap(modelFileName: String) {
 
-//TODO: Inject model
   org.bytedeco.javacpp.Loader.load(classOf[org.bytedeco.javacpp.onnx])
 
-  val byteArray = Files.readAllBytes(Paths.get("super_resolution.onnx"))
+  val byteArray = Files.readAllBytes(Paths.get(modelFileName))
 
-        val res = new ModelProto()
-        ParseProtoFromBytes(res.asInstanceOf[MessageLite], new BytePointer(byteArray:_*), byteArray.length) 
-
-//  val res = ModelProto.parseFrom(byteArray)
-
+  val res = new ModelProto()
+  ParseProtoFromBytes(res.asInstanceOf[MessageLite], new BytePointer(byteArray:_*), byteArray.length) 
   val graph = res.graph
 
 
-//  val maxOpsetVersion = res.opsetImport
+  //  val maxOpsetVersion = res.opsetImport
   //println("max opset : " + maxOpsetVersion)
   //val maxOpsetVersion = res.opset_import(0).version
 
@@ -89,8 +82,6 @@ object ParamsMap {
     val dimsList = (0 until dimsCount.toInt).map(x => tensorProto.dims(x)).toList
 
     val bytesBuffer = tensorProto.raw_data.asByteBuffer
-//    val byteArray = new Array[Byte](bytesBuffer.capacity)
-//    val bytes = ByteBuffer.wrap(byteArray)
 
     //FIXME : MOAR TYPES?
     val array = onnxDataType match {
@@ -110,12 +101,6 @@ object ParamsMap {
 
   val nodeCount = graph.node_size.toInt
   val node = (0 until nodeCount).map(x => graph.node(x)).toList
-
-
-
-
-
-//  def attributes = node.map(x => x.attribute.toArray).toArray
 
   def attributes = node.map{x => 
     val attributeCount = x.attribute_size.toInt
@@ -180,8 +165,6 @@ object ParamsMap {
     initializer.map { x =>
       val dimsCount = x.dims_size
       val dimsList = (0 until dimsCount.toInt).map(y => x.dims(y)).toList
- 
-//      val dimsList = x.dims.toList
       val arrX: Array[VV] = onnxTensorProtoToArray[VV](x)
       x.name.getString.replaceAll("/", "_") -> (arrX, dimsList)
     }.toMap
