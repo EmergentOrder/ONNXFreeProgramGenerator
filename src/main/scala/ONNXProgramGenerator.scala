@@ -28,10 +28,12 @@ import spire.math.Number
 import scala.reflect.ClassTag
 
 object ONNXProgramGenerator extends App {
-
-  val path = Paths.get("src/main/scala/ONNXProgram.scala");
+  val FS = false
 
   val fileName = args(0)
+  val programName = fileName.stripSuffix(".onnx").capitalize + (if(FS) "FS" else "")
+  val path = Paths.get("src/main/scala/" + programName + ".scala");
+
   val paramsMap = new ParamsMap(fileName)
 
   def fullSource[VV:spire.math.Numeric: ClassTag] = {
@@ -48,19 +50,24 @@ object ONNXProgramGenerator extends App {
     val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
 
     "package org.emergentorder.onnx\n\n" +
-    "import freestyle.free._\n" +
-    "import cats.free.{ Free, FreeApplicative } \n" +
+    (if(FS) "import freestyle.free._\n" +
+      "import cats.free.{ Free, FreeApplicative } \n" +
 //               "import example.Float16\n"
-    "import freestyle.free.implicits._\n" +
+      "import freestyle.free.implicits._\n" 
+      else "import shapeless.syntax.std.tuple._\n" +
+      "import cats._\n" +
+      "import cats.data._\n" +
+      "import cats.implicits._\n"
+      )  +
     "import scala.reflect.ClassTag\n" +
     "import scala.language.higherKinds\n\n" +
-    "@module trait Application {\n" +
+    (if(FS) "@module " else "") + "trait " + programName + " {\n" +
     distinctOps
       .map { x =>
-        "  val " + x + "FS" + ": " + x.capitalize + "FS" + "\n"
+        "  val " + x + (if(FS) "FS" else "") + ": " + x.capitalize + (if(FS) "FS" else "") + "\n"
       }
       .mkString("") +
-    "  val dataSource: DataSourceFS\n" +
+    "  val dataSource: DataSource" + (if(FS) "FS" else "") + "\n" +
     "  import cats.implicits._\n" +
     //Omit return type here for now
     "  def program[VV:spire.math.Numeric:ClassTag] = \n" +
@@ -69,11 +76,11 @@ object ONNXProgramGenerator extends App {
     //Assume one output for now
     "      node" +
     nodeInputs(0)(0) +
-    " <- dataSource.inputData[VV]\n" +
+    " <- " + (if (FS) "" else "NonEmptyList.of(") + "dataSource.inputData[VV]" + (if(FS) "" else ")") + "\n" +
     params
       .map(x =>
         "      node" + x._1 + " <- "
-          + "dataSource.getParams[VV](\"" + x._1 + "\")\n")
+          + (if(FS) "" else "NonEmptyList.of(") + " dataSource.getParams[VV](\"" + x._1 + "\")" + (if(FS) "" else ")" ) + "\n")
       .mkString("") +
     (nodesInputsOpsAndOutputs zip attributes)
       .map { x =>
@@ -133,7 +140,7 @@ object ONNXProgramGenerator extends App {
        
         val opName = x._1._1._2
         val nodeName = x._1._2(0) 
-        "      node" + nodeName + " <- " + opName + "FS" + "." + opName + "1" + "[VV]" +
+        "      node" + nodeName + " <- " + (if(FS) "" else "NonEmptyList.of(") + opName + (if(FS) "FS" else "") + "." + opName + "1" + "[VV]" +
         "(" +
         """"""" + nodeName + """", """ + //assumes > 0 args
           nodesOrParams.mkString(",") +
@@ -145,7 +152,7 @@ object ONNXProgramGenerator extends App {
           stringFields.mkString(",") +
           (if (longFields.size > 0) "," else "") +
           longFields.mkString(",") +
-          ")\n"
+          ")" + (if(FS) "" else ")") + "\n"
       }
       .mkString("") +
     "    } yield (" +

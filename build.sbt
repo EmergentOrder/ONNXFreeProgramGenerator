@@ -20,7 +20,7 @@ addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.
 //"com.thesamet.scalapb" %  "scalapb-runtime_2.12" % "0.7.5-SNAPSHOT",
 //"com.thesamet.scalapb" %% "compilerplugin" % "0.7.5-SNAPSHOT",
       "org.bytedeco" % "javacpp" % "1.4.3-SNAPSHOT",
-//"com.chuusai" %% "shapeless" % "2.3.3",
+      "com.chuusai" %% "shapeless" % "2.3.3",
       "org.bytedeco.javacpp-presets" % "onnx-platform" % "1.2.2-1.4.3-SNAPSHOT",
       "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test,
       "org.typelevel" %% "spire" % "0.16.0",
