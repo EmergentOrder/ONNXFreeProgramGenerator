@@ -54,10 +54,7 @@ object ONNXProgramGenerator extends App {
       "import cats.free.{ Free, FreeApplicative } \n" +
 //               "import example.Float16\n"
       "import freestyle.free.implicits._\n" 
-      else "import shapeless.syntax.std.tuple._\n" +
-      "import cats._\n" +
-      "import cats.data._\n" +
-      "import cats.implicits._\n"
+      else ""
       )  +
     "import scala.reflect.ClassTag\n" +
     "import scala.language.higherKinds\n\n" +
@@ -76,11 +73,11 @@ object ONNXProgramGenerator extends App {
     //Assume one output for now
     "      node" +
     nodeInputs(0)(0) +
-    " <- " + (if (FS) "" else "NonEmptyList.of(") + "dataSource.inputData[VV]" + (if(FS) "" else ")") + "\n" +
+    " <- " + (if (FS) "" else "List(") + "dataSource.inputData[VV]" + (if(FS) "" else ")") + "\n" +
     params
       .map(x =>
         "      node" + x._1 + " <- "
-          + (if(FS) "" else "NonEmptyList.of(") + " dataSource.getParams[VV](\"" + x._1 + "\")" + (if(FS) "" else ")" ) + "\n")
+          + (if(FS) "" else "List(") + " dataSource.getParams[VV](\"" + x._1 + "\")" + (if(FS) "" else ")" ) + "\n")
       .mkString("") +
     (nodesInputsOpsAndOutputs zip attributes)
       .map { x =>
@@ -140,7 +137,7 @@ object ONNXProgramGenerator extends App {
        
         val opName = x._1._1._2
         val nodeName = x._1._2(0) 
-        "      node" + nodeName + " <- " + (if(FS) "" else "NonEmptyList.of(") + opName + (if(FS) "FS" else "") + "." + opName + "1" + "[VV]" +
+        "      node" + nodeName + " <- " + (if(FS) "" else "List(") + opName + (if(FS) "FS" else "") + "." + opName + "1" + "[VV]" +
         "(" +
         """"""" + nodeName + """", """ + //assumes > 0 args
           nodesOrParams.mkString(",") +
