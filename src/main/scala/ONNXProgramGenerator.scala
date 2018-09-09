@@ -29,9 +29,14 @@ import scala.reflect.ClassTag
 
 object ONNXProgramGenerator extends App {
   val FS = false
+  //Cut and pasted
+  val useDotty = false
+  val unionTypeOperator = (if(useDotty) " | " else " TypeOr ")
+  //TODO: Get input types from first node
+  val inputTypes = "T " + (if(useDotty) "<: " else ": ") + (if(useDotty) "" else "(UNil TypeOr ") +"Float16" + unionTypeOperator + "Float" + unionTypeOperator + "Double" + (if(useDotty) "" else ")#check") + ":Numeric:ClassTag:Field"
 
-  val fileName = args(0)
-  val programName = fileName.stripSuffix(".onnx").capitalize + (if(FS) "FS" else "")
+  val fileName = "super_resolution.onnx"
+  val programName = fileName.stripSuffix(".onnx").capitalize + (if(FS) "Free" else "")
   val path = Paths.get("src/main/scala/" + programName + ".scala");
 
   val paramsMap = new ParamsMap(fileName)
@@ -50,34 +55,45 @@ object ONNXProgramGenerator extends App {
     val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
 
     "package org.emergentorder.onnx\n\n" +
-    (if(FS) "import freestyle.free._\n" +
-      "import cats.free.{ Free, FreeApplicative } \n" +
+    (if(FS) 
+      "import cats.free.{ Free, FreeApplicative } \n"
 //               "import example.Float16\n"
-      "import freestyle.free.implicits._\n" 
       else ""
       )  +
+    (if(useDotty) "" else
+      """
+      import UnionType._
+      """
+    ) +
     "import scala.reflect.ClassTag\n" +
+    "import spire.implicits._\n" +
+    "import spire.math.UByte\n" +
+    "import spire.math.UShort\n" +
+    "import spire.math.Complex\n" +
+    "import spire.algebra.Field\n" +
+    "import spire.math.Numeric\n" +
+    "import singleton.ops._\n" +
     "import scala.language.higherKinds\n\n" +
-    (if(FS) "@module " else "") + "trait " + programName + " {\n" +
+    (if(FS) "" else "") + "trait " + programName + " {\n" +
     distinctOps
       .map { x =>
-        "  val " + x + (if(FS) "FS" else "") + ": " + x.capitalize + (if(FS) "FS" else "") + "\n"
+        "  val " + x + (if(FS) "Free" else "") + ": " + x.capitalize + (if(FS) "Free" else "") + "\n"
       }
       .mkString("") +
-    "  val dataSource: DataSource" + (if(FS) "FS" else "") + "\n" +
-    "  import cats.implicits._\n" +
+    "  val dataSource: DataSource" + (if(FS) "Free" else "") + "\n" +
+//    "  import cats.implicits._\n" +
     //Omit return type here for now
-    "  def program[VV:spire.math.Numeric:ClassTag] = \n" +
+    "  def program[" + inputTypes + ", J <: XInt]" + " = \n" +
     //Body of program generated here
     "    for {\n" +
     //Assume one output for now
     "      node" +
     nodeInputs(0)(0) +
-    " <- " + (if (FS) "" else "List(") + "dataSource.inputData[VV]" + (if(FS) "" else ")") + "\n" +
+    " <- " + (if(FS) "" else "List(") + "dataSource.inputData" +(if(FS) "Free" else "") +"[T,J]" + (if(FS) "" else ")") + "\n" +
     params
       .map(x =>
         "      node" + x._1 + " <- "
-          + (if(FS) "" else "List(") + " dataSource.getParams[VV](\"" + x._1 + "\")" + (if(FS) "" else ")" ) + "\n")
+          + (if(FS) "" else "List(") + " dataSource.getParams" + (if(FS) "Free" else "") + "[T,J](\"" + x._1 + "\")" + (if(FS) "" else ")" ) + "\n")
       .mkString("") +
     (nodesInputsOpsAndOutputs zip attributes)
       .map { x =>
@@ -93,7 +109,7 @@ object ONNXProgramGenerator extends App {
           .map { y =>
 
             val field = y.i.asInstanceOf[Long]
-            y.name.getString + """ = Some(("""" + field.toInt + """"))"""
+            y.name.getString + """ = Some((""" + field.toInt + """))"""
           }
 
           val longListFields = x._2
@@ -106,7 +122,7 @@ object ONNXProgramGenerator extends App {
             val longListCount = y.ints_size
             val longListList = (0 until longListCount.toInt).map(z => y.ints(z)).toList
             val field = longListList.toVector.asInstanceOf[Vector[Long]]
-            y.name.getString + """ = Some((Array("""" + field.mkString("""","""") + """")))""" 
+            y.name.getString + """ = Some((Seq(""" + field.mkString(",") + """)))""" 
           }
         val stringFields = x._2
           .filter { y =>
@@ -118,7 +134,7 @@ object ONNXProgramGenerator extends App {
             val stringCount = y.strings_size
             val stringList = (0 until stringCount.toInt).map(z => y.strings(z)).toList
             val field = stringList.asInstanceOf[String]
-            y.name.getString + """ = Some(Array("""" + field + """"))"""
+            y.name.getString + """ = Some(Seq(""" + field + """))"""
           }
         val tensorProtoFields = x._2
           .filter { y =>
@@ -137,7 +153,8 @@ object ONNXProgramGenerator extends App {
        
         val opName = x._1._1._2
         val nodeName = x._1._2(0) 
-        "      node" + nodeName + " <- " + (if(FS) "" else "List(") + opName + (if(FS) "FS" else "") + "." + opName + "1" + "[VV]" +
+        //TODO: Select correct op version instead of 1
+        "      node" + nodeName + " <- " + (if(FS) "" else "List(") + opName + (if(FS) "Free" else "") + "." + opName + "1" + (if(FS) "Free" else "")  + "" +
         "(" +
         """"""" + nodeName + """", """ + //assumes > 0 args
           nodesOrParams.mkString(",") +
@@ -160,9 +177,9 @@ object ONNXProgramGenerator extends App {
 //pw.write("for {\n")
 
   def generate() = {
-//    println(fullSource[Float])
+    println(fullSource[Int])
     //Seems to not catch some things it should
-    val onnxSource = fullSource[Float].parse[Source].get
+    val onnxSource = fullSource[Int].parse[Source].get
 
     Files.write(path, onnxSource.syntax.getBytes("UTF-8"));
   }

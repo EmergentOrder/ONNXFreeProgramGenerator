@@ -83,14 +83,18 @@ class ParamsMap(modelFileName: String) {
 
     val bytesBuffer = tensorProto.raw_data.asByteBuffer
 
+    val tensProtoInt = TensorProto.INT32
+
+    val tensProtoFloat = TensorProto.FLOAT
+
     //FIXME : MOAR TYPES?
     val array = onnxDataType match {
-      case TensorProto.INT32 => {
+      case tensProtoInt => {
         val arrX = dimsToArray[Int](dimsCount, dimsList)
         bytesBuffer.asIntBuffer.get(arrX)
         arrX.map(x => x.asInstanceOf[VV])
       }
-      case TensorProto.FLOAT => {
+      case tensProtoFloat => {
         val arrX = dimsToArray[Float](dimsCount, dimsList)
         bytesBuffer.asFloatBuffer.get(arrX)
         arrX.map(y => if(y.isNaN) 0.0f else y).map(x => x.asInstanceOf[VV])
