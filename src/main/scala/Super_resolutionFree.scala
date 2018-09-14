@@ -1,9 +1,13 @@
-package org.emergentorder.onnx
+package org.emergentorder.onnxFree
 
+import freestyle.free._
+import freestyle.free.implicits._
 import cats.free.{ Free, FreeApplicative } 
-
-      import UnionType._
-      import scala.reflect.ClassTag
+import cats.implicits._ 
+import cats.effect.IO
+import org.emergentorder.onnx._
+import org.emergentorder.onnx.UnionType._
+import scala.reflect.ClassTag
 import spire.implicits._
 import spire.math.UByte
 import spire.math.UShort
@@ -13,14 +17,14 @@ import spire.math.Numeric
 import singleton.ops._
 import scala.language.higherKinds
 
-trait Super_resolutionFree {
+@module trait Super_resolutionFree {
   val ConvFree: ConvFree
   val AddFree: AddFree
   val ReluFree: ReluFree
   val ReshapeFree: ReshapeFree
   val TransposeFree: TransposeFree
   val dataSource: DataSourceFree
-  def program[T : (UNil TypeOr Float16 TypeOr Float TypeOr Double)#check:Numeric:ClassTag:Field, J <: XInt] = 
+  def program[T : (UNil TypeOr Float16 TypeOr Float TypeOr Double)#check:Numeric:ClassTag:Field, J <: XInt]: FS.Seq[Tensor[T,J]]  = 
     for {
       node1 <- dataSource.inputDataFree[T,J]
       node8 <-  dataSource.getParamsFree[T,J]("8")

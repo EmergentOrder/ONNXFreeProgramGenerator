@@ -28,7 +28,7 @@ import spire.math.Number
 import scala.reflect.ClassTag
 
 object ONNXProgramGenerator extends App {
-  val FS = false
+  val FS = true
   //Cut and pasted
   val useDotty = false
   val unionTypeOperator = (if(useDotty) " | " else " TypeOr ")
@@ -54,16 +54,18 @@ object ONNXProgramGenerator extends App {
 
     val nodesInputsOpsAndOutputs = (nodeInputs zip ops) zip nodeOutputs
 
-    "package org.emergentorder.onnx\n\n" +
+    "package org.emergentorder.onnx" + (if(FS) "Free" else "") + "\n\n" +
     (if(FS) 
-      "import cats.free.{ Free, FreeApplicative } \n"
-//               "import example.Float16\n"
+      "import freestyle.free._\n" +
+      "import freestyle.free.implicits._\n" +
+      "import cats.free.{ Free, FreeApplicative } \n" +
+      "import cats.implicits._ \n" +
+      "import cats.effect.IO\n" +
+      "import org.emergentorder.onnx._\n"
       else ""
       )  +
     (if(useDotty) "" else
-      """
-      import UnionType._
-      """
+      "import org.emergentorder.onnx.UnionType._\n"
     ) +
     "import scala.reflect.ClassTag\n" +
     "import spire.implicits._\n" +
@@ -74,7 +76,7 @@ object ONNXProgramGenerator extends App {
     "import spire.math.Numeric\n" +
     "import singleton.ops._\n" +
     "import scala.language.higherKinds\n\n" +
-    (if(FS) "" else "") + "trait " + programName + " {\n" +
+    (if(FS) "@module " else "") + "trait " + programName + " {\n" +
     distinctOps
       .map { x =>
         "  val " + x + (if(FS) "Free" else "") + ": " + x.capitalize + (if(FS) "Free" else "") + "\n"
@@ -83,10 +85,10 @@ object ONNXProgramGenerator extends App {
     "  val dataSource: DataSource" + (if(FS) "Free" else "") + "\n" +
 //    "  import cats.implicits._\n" +
     //Omit return type here for now
-    "  def program[" + inputTypes + ", J <: XInt]" + " = \n" +
+    "  def program[" + inputTypes + ", J <: XInt]" + (if(FS) ": FS.Seq[Tensor[T,J]] " else ": List[Tensor[T,J]] ") + " = \n" +
     //Body of program generated here
     "    for {\n" +
-    //Assume one output for now
+    //TODO: Assumes one output for now, enable multiple outputs for full computation graph
     "      node" +
     nodeInputs(0)(0) +
     " <- " + (if(FS) "" else "List(") + "dataSource.inputData" +(if(FS) "Free" else "") +"[T,J]" + (if(FS) "" else ")") + "\n" +
@@ -98,7 +100,7 @@ object ONNXProgramGenerator extends App {
     (nodesInputsOpsAndOutputs zip attributes)
       .map { x =>
         val nodesOrParams = x._1._1._1.map(y => "node" + y + """, """" + y + """"""")
-
+        val nodesOrParamsRaw = x._1._1._1.map(y => "node" + y)
 //        x._2.map(y => y.getAllFields.toArray).foreach(y => println(y(1)._2.getClass))
 
 //        println(x._2.size)
@@ -154,7 +156,10 @@ object ONNXProgramGenerator extends App {
         val opName = x._1._1._2
         val nodeName = x._1._2(0) 
         //TODO: Select correct op version instead of 1
-        "      node" + nodeName + " <- " + (if(FS) "" else "List(") + opName + (if(FS) "Free" else "") + "." + opName + "1" + (if(FS) "Free" else "")  + "" +
+        //TODO:  ? Use cats IO Parallel . i.e. (name, age).parMapN { (name, age) => Person(name, age) }
+        "      node" + nodeName + " <- " + (if(FS) ""
+         // "(" + nodesOrParamsRaw.mkString(",") + ").parMap" + nodesOrParamsRaw.size + " {(" + nodesOrParamsRaw.mkString(",") + ")" + " => " 
+          else "List(") + opName + (if(FS) "Free" else "") + "." + opName + "1" + (if(FS) "Free" else "")  + "" +
         "(" +
         """"""" + nodeName + """", """ + //assumes > 0 args
           nodesOrParams.mkString(",") +
@@ -166,7 +171,9 @@ object ONNXProgramGenerator extends App {
           stringFields.mkString(",") +
           (if (longFields.size > 0) "," else "") +
           longFields.mkString(",") +
-          ")" + (if(FS) "" else ")") + "\n"
+          ")" + (if(FS) ""
+           // "}" 
+            else ")") + "\n"
       }
       .mkString("") +
     "    } yield (" +
